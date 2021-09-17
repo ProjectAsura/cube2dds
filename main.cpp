@@ -94,47 +94,101 @@ std::wstring ToStringW( const std::string& value )
 //-----------------------------------------------------------------------------
 bool ConvertToDDS(const char* path, const CubeLUT& cube)
 {
-    auto N = cube.lut3D.size();
-    if (N == 0)
-    {
-        return false;
-    }
+    auto processed = false;
 
-    DirectX::ScratchImage image;
-    image.Initialize3D(DXGI_FORMAT_R16G16B16A16_FLOAT, N, N, N, 1);
-
-    auto pixels = reinterpret_cast<uint16_t*>(image.GetPixels());
-    auto idx = 0;
-    for(size_t z=0; z<N; ++z)
+    // 1D LUT Only.
+    if (!cube.lut1D.empty() && cube.lut3D.empty())
     {
-        for(size_t y=0; y<N; ++y)
+        DirectX::ScratchImage image;
+
+        auto N = cube.lut1D.size();
+        image.Initialize1D(DXGI_FORMAT_R16G16B16A16_FLOAT, N, 1, 1);
+
+        auto pixels = reinterpret_cast<uint16_t*>(image.GetPixels());
+        auto idx = 0;
+        for(size_t x=0; x<N; ++x) {
+
+            auto r = cube.lut1D[x][0];
+            auto g = cube.lut1D[x][1];
+            auto b = cube.lut1D[x][2];
+
+            pixels[idx + 0] = ToHalf(r);
+            pixels[idx + 1] = ToHalf(g);
+            pixels[idx + 2] = ToHalf(b);
+            pixels[idx + 3] = ToHalf(1.0f);
+            idx += 4;
+        }
+
+        // 出力パス.
+        auto outputPath = ToStringW(path);
+
+        // DDSファイルに保存.
+        auto hr = DirectX::SaveToDDSFile(
+            image.GetImages(),
+            image.GetImageCount(),
+            image.GetMetadata(),
+            DirectX::DDS_FLAGS_NONE,
+            outputPath.c_str());
+        if (FAILED(hr))
         {
-            for(size_t x=0; x<N; ++x)
-            {
-                auto r = cube.lut3D[x][y][z][0];
-                auto g = cube.lut3D[x][y][z][1];
-                auto b = cube.lut3D[x][y][z][2];
+            return false;
+        }
 
-                pixels[idx + 0] = ToHalf(r);
-                pixels[idx + 1] = ToHalf(g);
-                pixels[idx + 2] = ToHalf(b);
-                pixels[idx + 3] = ToHalf(1.0f);
-                idx += 4;
+        processed = true;
+    }
+    // 3D LUT Only.
+    else if (!cube.lut3D.empty() && cube.lut1D.empty())
+    {
+        DirectX::ScratchImage image;
+
+        auto N = cube.lut3D.size();
+        image.Initialize3D(DXGI_FORMAT_R16G16B16A16_FLOAT, N, N, N, 1);
+
+        auto pixels = reinterpret_cast<uint16_t*>(image.GetPixels());
+        auto idx = 0;
+        for(size_t z=0; z<N; ++z)
+        {
+            for(size_t y=0; y<N; ++y)
+            {
+                for(size_t x=0; x<N; ++x)
+                {
+                    auto r = cube.lut3D[x][y][z][0];
+                    auto g = cube.lut3D[x][y][z][1];
+                    auto b = cube.lut3D[x][y][z][2];
+
+                    pixels[idx + 0] = ToHalf(r);
+                    pixels[idx + 1] = ToHalf(g);
+                    pixels[idx + 2] = ToHalf(b);
+                    pixels[idx + 3] = ToHalf(1.0f);
+                    idx += 4;
+                }
             }
         }
+
+        // 出力パス.
+        auto outputPath = ToStringW(path);
+
+        // DDSファイルに保存.
+        auto hr = DirectX::SaveToDDSFile(
+            image.GetImages(),
+            image.GetImageCount(),
+            image.GetMetadata(),
+            DirectX::DDS_FLAGS_NONE,
+            outputPath.c_str());
+        if (FAILED(hr))
+        {
+            return false;
+        }
+
+        processed = true;
+    }
+    // Shaper LUT + 3D LUT.
+    else if (!cube.lut1D.empty() && !cube.lut3D.empty())
+    {
+        // TODO : Implementation.
     }
 
-    // 出力パス.
-    auto outputPath = ToStringW(path);
-
-    // DDSファイルに保存.
-    auto hr = DirectX::SaveToDDSFile(
-        image.GetImages(),
-        image.GetImageCount(),
-        image.GetMetadata(),
-        DirectX::DDS_FLAGS_NONE,
-        outputPath.c_str());
-    if (FAILED(hr))
+    if (!processed)
     {
         return false;
     }

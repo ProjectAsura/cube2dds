@@ -62,6 +62,8 @@ CubeLUT::LUTState CubeLUT::LoadCubeFile(const char* path)
     title.clear();
     domainMin = TableRow(3, 0.0f);
     domainMax = TableRow(3, 1.0f);
+    range1D = { 0.0f, 1.0f };
+    range3D = { 0.0f, 1.0f };
     lut1D.clear();
     lut3D.clear();
 
@@ -98,10 +100,10 @@ CubeLUT::LUTState CubeLUT::LoadCubeFile(const char* path)
     stream.clear();
 
     // read keywords
-    int N, CntTitle, CntSize, CntMin, CntMax;
+    int N, CntTitle, CntSize, CntMin, CntMax, CntRange1D, CntRange3D;
 
     // each keyword to occur zero or one time.
-    N = CntTitle = CntSize = CntMin = CntMax = 0;
+    N = CntTitle = CntSize = CntMin = CntMax = CntRange1D = CntRange3D = 0;
 
     while(status == LUTState::OK)
     {
@@ -166,6 +168,14 @@ CubeLUT::LUTState CubeLUT::LoadCubeFile(const char* path)
 
             lut3D = Table3D(N, Table2D(N, Table1D(N, TableRow(3))));
         }
+        else if (keyword == "LUT_1D_INPUT_RANGE" && CntRange1D++ == 0)
+        {
+            line >> range1D.min >> range1D.max;
+        }
+        else if (keyword == "LUT_3D_INPUT_RANGE" && CntRange3D++ == 0)
+        {
+            line >> range3D.min >> range3D.max;
+        }
         else
         {
             status = LUTState::UnknownOrRepeatedKeyword;
@@ -174,15 +184,18 @@ CubeLUT::LUTState CubeLUT::LoadCubeFile(const char* path)
     }
 
     if (status == LUTState::OK && CntSize == 0)
+    {
         status = LUTState::LUTSizeOutOfRange;
+    }
 
     if (status == LUTState::OK 
      && (domainMin[0] >= domainMax[0])
      || (domainMin[1] >= domainMax[1])
      || (domainMin[2] >= domainMax[2]))
+    {
         status = LUTState::DomainBoundsReserved;
+    }
 
-    // read lines of table data
     if (lut1D.size() > 0)
     {
         N = int(lut1D.size());
@@ -191,7 +204,9 @@ CubeLUT::LUTState CubeLUT::LoadCubeFile(const char* path)
             lut1D[i] = ParseTableRow(ReadLine(stream, lineSeparator));
         }
     }
-    else
+
+    // read lines of table data
+    if (lut3D.size() > 0)
     {
         N = int(lut3D.size());
         // NOTE that r loops fastest

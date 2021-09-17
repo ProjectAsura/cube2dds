@@ -39,6 +39,12 @@ public:
         CouldNotParseTableData      = 24,
     };
 
+    struct Range
+    {
+        float min;
+        float max;
+    };
+
     //=========================================================================
     // public variables.
     //=========================================================================
@@ -48,6 +54,8 @@ public:
     TableRow        domainMax;
     Table1D         lut1D;
     Table3D         lut3D;
+    Range           range1D;
+    Range           range3D;
 
     //=========================================================================
     // public methods.
