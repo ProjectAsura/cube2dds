@@ -7,6 +7,58 @@
 
 
 //-----------------------------------------------------------------------------
+//      32bit 浮動小数から 16bit 浮動小数に変換します.
+//-----------------------------------------------------------------------------
+inline uint16_t ToHalf(float value)
+{
+    union FP32
+    {
+        uint32_t u;
+        float    f;
+    };
+
+    uint16_t result;
+
+    // ビット列を崩さないままuint32_t型に変換.
+    FP32 fp32 = {};
+    fp32.f = value;
+
+    uint32_t bit = fp32.u;
+
+    // float表現の符号bitを取り出し.
+    uint32_t sign   = ( bit & 0x80000000U) >> 16U;
+
+    // 符号部を削ぎ落す.
+    bit = bit & 0x7FFFFFFFU;
+
+    // halfとして表現する際に値がデカ過ぎる場合は，無限大にクランプ.
+    if (bit > 0x47FFEFFFU)
+    {
+        result = 0x7FFFU;
+    }
+    else
+    {
+        // 正規化されたhalfとして表現するために小さすぎる値は正規化されていない値に変換.
+        if ( bit < 0x38800000U)
+        {
+            uint32_t shift = 113U - ( bit >> 23U);
+            bit = (0x800000U | ( bit & 0x7FFFFFU)) >> shift;
+        }
+        else
+        {
+            // 正規化されたhalfとして表現するために指数部に再度バイアスをかける
+            bit += 0xC8000000U;
+        }
+
+        // half型表現にする.
+        result = (( bit + 0x0FFFU + (( bit >> 13U) & 1U)) >> 13U) & 0x7FFFU;
+    }
+
+    // 符号部を付け足して返却.
+    return static_cast<uint16_t>(result | sign);
+}
+
+//-----------------------------------------------------------------------------
 //      拡張子を取り除いたファイルパスを取得します.
 //-----------------------------------------------------------------------------
 std::string GetPathWithoutExtA( const char* filePath )
@@ -51,21 +103,26 @@ bool ConvertToDDS(const char* path, const CubeLUT& cube)
     DirectX::ScratchImage image;
     image.Initialize3D(DXGI_FORMAT_R16G16B16A16_FLOAT, N, N, N, 1);
 
-    for(auto z=0; z<N; ++z)
+    auto pixels = reinterpret_cast<uint16_t*>(image.GetPixels());
+    auto idx = 0;
+    for(size_t z=0; z<N; ++z)
     {
-        for(auto y=0; y<N; ++y)
+        for(size_t y=0; y<N; ++y)
         {
-            for(auto x=0; x<N; ++x)
+            for(size_t x=0; x<N; ++x)
             {
                 auto r = cube.lut3D[x][y][z][0];
                 auto g = cube.lut3D[x][y][z][1];
                 auto b = cube.lut3D[x][y][z][2];
 
-                // TODO : ピクセルに格納.
+                pixels[idx + 0] = ToHalf(r);
+                pixels[idx + 1] = ToHalf(g);
+                pixels[idx + 2] = ToHalf(b);
+                pixels[idx + 3] = ToHalf(1.0f);
+                idx += 4;
             }
         }
     }
-
 
     // 出力パス.
     auto outputPath = ToStringW(path);

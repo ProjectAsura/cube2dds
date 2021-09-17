@@ -273,3 +273,30 @@ CubeLUT::LUTState CubeLUT::SaveCubeFile(const char* path)
 
     return ret;
 }
+
+#if 0
+//void CubeLUT::CreateAsDefault(size_t N)
+//{
+//    status = LUTState::OK;
+//    title.clear();
+//    domainMin = TableRow(3, 0.0f);
+//    domainMax = TableRow(3, 1.0f);
+//    lut1D.clear();
+//    lut3D.clear();
+//
+//    lut3D = Table3D(N, Table2D(N, Table1D(N, TableRow(3))));
+//
+//    for(auto b=0; b<N; ++b)
+//    {
+//        for(auto g=0; g<N; ++g)
+//        {
+//            for(auto r=0; r<N; ++r)
+//            {
+//                lut3D[r][g][b][0] = float(r) / float(N);
+//                lut3D[r][g][b][1] = float(g) / float(N);
+//                lut3D[r][g][b][2] = float(b) / float(N);
+//            }
+//        }
+//    }
+//}
+#endif

@@ -59,6 +59,10 @@ public:
     LUTState LoadCubeFile(const char* path);
     LUTState SaveCubeFile(const char* path);
 
+#if 0
+    //void CreateAsDefault(size_t N);
+#endif
+
 private:
     //=========================================================================
     // private variables.
